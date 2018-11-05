@@ -6,7 +6,7 @@
 
 ## SYNOPSIS
 
-**sqlitear** [OPTIONS] -f DATABASE [FILE...]
+**sqlitear** [OPTIONS] -c|-x|-t -f DATABASE [FILE...]
 
 ## DESCRIPTION
 
@@ -17,6 +17,9 @@ restore individual files from the database.
 
 **-f or --file**
 	Set the path to database.
+
+**-c or --create**
+	Create a new database.
 
 **-x or --extract**
 	Extract file from a database.

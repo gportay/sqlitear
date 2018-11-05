@@ -40,6 +40,7 @@ struct options {
 	int argc;
 	char * const *argv;
 	const char *file;
+	int create;
 	int extract;
 	int list;
 };
@@ -230,13 +231,14 @@ static inline const char *applet(const char *arg0)
 
 void usage(FILE * f, char * const arg0)
 {
-	fprintf(f, "Usage: %s [OPTIONS] -f DATABASE [FILE...]\n"
+	fprintf(f, "Usage: %s [OPTIONS] -c|-x|-t -f DATABASE [FILE...]\n"
 		   "\n"
 		   "Saves many files together into a single database, and can "
 		   "restore individual files\nfrom the database.\n"
 		   "\n"
 		   "Options:\n"
 		   " -f or --file FILE     Set the path to database.\n"
+		   " -c or --create        Create a new database.\n"
 		   " -x or --extract       Extract file from a database.\n"
 		   " -t or --list          List the contents of a database.\n"
 		   " -h or --help          Display this message.\n"
@@ -258,7 +260,7 @@ int parse_arguments(struct options *opts, int argc, char * const argv[])
 	opterr = 0;
 	for (;;) {
 		int index;
-		int c = getopt_long(argc, argv, "f:xtVh", long_options, &index);
+		int c = getopt_long(argc, argv, "f:cxtVh", long_options, &index);
 		if (c == -1) {
 			break;
 		}
@@ -266,6 +268,10 @@ int parse_arguments(struct options *opts, int argc, char * const argv[])
 		switch (c) {
 		case 'f':
 			opts->file = optarg;
+			break;
+
+		case 'c':
+			opts->create = 1;
 			break;
 
 		case 'x':
@@ -311,6 +317,10 @@ int main(int argc, char * const argv[])
 	} else if (!options.list && !options.extract && (argc - argi < 1)) {
 		usage(stdout, argv[0]);
 		fprintf(stderr, "Error: Too few arguments!\n");
+		exit(EXIT_FAILURE);
+	} else if (!options.list && !options.extract && !options.create) {
+		usage(stdout, argv[0]);
+		fprintf(stderr, "Error: Invalid command! Use -c, -x or -l.\n");
 		exit(EXIT_FAILURE);
 	} else if (!options.file || !*options.file) {
 		usage(stdout, argv[0]);
