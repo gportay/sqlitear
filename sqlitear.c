@@ -291,13 +291,9 @@ int main(int argc, char * const argv[])
 	if (argi < 0) {
 		fprintf(stderr, "Error: %s: Invalid option!\n", argv[optind-1]);
 		exit(EXIT_FAILURE);
-	} else if (!options.list && (argc - argi < 1)) {
+	} else if (!options.list && !options.extract && (argc - argi < 1)) {
 		usage(stdout, argv[0]);
 		fprintf(stderr, "Error: Too few arguments!\n");
-		exit(EXIT_FAILURE);
-	} else if (!options.list && options.extract && (argc - argi > 1)) {
-		usage(stdout, argv[0]);
-		fprintf(stderr, "Error: Too many arguments!\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -319,7 +315,18 @@ int main(int argc, char * const argv[])
 	}
 
 	if (options.extract) {
-		ret = extract(db, argv[optind]);
+		int i;
+
+		if (argc - argi == 0) {
+			ret = list(db, extract);
+			goto exit;
+		}
+		
+		for (i = optind; i < argc; i++)
+			if (extract(db, argv[i]))
+				goto exit;
+
+		ret = 0;
 	} else if (options.list) {
 		ret = list(db, printfile);
 	} else {
