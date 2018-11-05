@@ -44,8 +44,18 @@ struct options {
 	int list;
 };
 
-int list(sqlite3 *db) {
+int printfile(sqlite3 *db, const char *file)
+{
+	(void)db;
+	printf("%s\n", file);
+	return 0;
+}
+
+int list(sqlite3 *db, int (*callback)(sqlite3 *, const char *)) {
 	int ret = -1;
+
+	if (!callback)
+		goto exit;
 
 	for (;;) {
 		sqlite3_stmt *stmt;
@@ -62,7 +72,10 @@ int list(sqlite3 *db) {
 			if (rc == SQLITE_DONE) {
 				break;
 			} else if (rc == SQLITE_ROW) {
-				printf("%s\n", sqlite3_column_text(stmt, 0));
+				if (callback(db,
+				     (const char*)sqlite3_column_text(stmt, 0)))
+					goto exit;
+
 				continue;
 			}
 
@@ -308,7 +321,7 @@ int main(int argc, char * const argv[])
 	if (options.extract) {
 		ret = extract(db, argv[optind]);
 	} else if (options.list) {
-		ret = list(db);
+		ret = list(db, printfile);
 	} else {
 		int i;
 
