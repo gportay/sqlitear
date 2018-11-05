@@ -198,7 +198,7 @@ static inline const char *applet(const char *arg0)
 
 void usage(FILE * f, char * const arg0)
 {
-	fprintf(f, "Usage: %s [OPTIONS] [FILE]\n"
+	fprintf(f, "Usage: %s [OPTIONS] [FILE...]\n"
 		   "\n"
 		   "Saves many files together into a single database, and can "
 		   "restore individual files\nfrom the database.\n"
@@ -282,7 +282,7 @@ int main(int argc, char * const argv[])
 		usage(stdout, argv[0]);
 		fprintf(stderr, "Error: Too few arguments!\n");
 		exit(EXIT_FAILURE);
-	} else if (!options.list && (argc - argi > 1)) {
+	} else if (!options.list && options.extract && (argc - argi > 1)) {
 		usage(stdout, argv[0]);
 		fprintf(stderr, "Error: Too many arguments!\n");
 		exit(EXIT_FAILURE);
@@ -305,13 +305,19 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	if (options.extract)
+	if (options.extract) {
 		ret = extract(db, argv[optind]);
-	else if (options.list)
+	} else if (options.list) {
 		ret = list(db);
-	else
-		ret = archive(db, argv[optind]);
+	} else {
+		int i;
 
+		for (i = optind; i < argc; i++)
+			if (archive(db, argv[i]))
+				goto exit;
+
+		ret = 0;
+	}
 exit:
 	sqlite3_close(db);
 	return ret;
