@@ -99,11 +99,12 @@ exit:
 
 int extract(sqlite3 *db, const char *file)
 {
-	int ret = -1;
+	int fd = -1, ret = -1;
 
 	for (;;) {
 		sqlite3_stmt *stmt;
 		const char *sql;
+		ssize_t size;
 
 		sql = "SELECT content FROM blobs WHERE file = ?";
 		if (sqlite3_prepare(db, sql, -1, &stmt, 0)) {
@@ -121,8 +122,20 @@ int extract(sqlite3 *db, const char *file)
 			goto exit;
 		}
 
-		write(STDOUT_FILENO, sqlite3_column_blob(stmt, 0),
-		      sqlite3_column_bytes(stmt, 0));
+		fd = open(file, O_CREAT | O_WRONLY);
+		if (fd == -1) {
+			perror("open");
+			goto exit;
+		}
+
+		size = write(fd, sqlite3_column_blob(stmt, 0),
+			     sqlite3_column_bytes(stmt, 0));
+		if (size == -1) {
+			perror("write");
+			goto exit;
+		} else if (size < sqlite3_column_bytes(stmt, 0)) {
+			fprintf(stderr, "write: Truncated\n");
+		}
 
 		if (sqlite3_finalize(stmt) == SQLITE_SCHEMA) {
 			__sqlite3_perror("sqlite3_step", db);
@@ -135,6 +148,12 @@ int extract(sqlite3 *db, const char *file)
 	ret = 0;
 
 exit:
+	if (fd != -1) {
+		if (close(fd))
+			perror("close");
+		fd = -1;
+	}
+
 	return ret;
 }
 
