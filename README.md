@@ -6,7 +6,7 @@
 
 ## SYNOPSIS
 
-**sqlitear** [OPTIONS] [FILE...]
+**sqlitear** [OPTIONS] -f DATABASE [FILE...]
 
 ## DESCRIPTION
 
