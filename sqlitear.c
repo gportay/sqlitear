@@ -43,6 +43,109 @@ struct options {
 	int extract;
 };
 
+int extract(sqlite3 *db, const char *file)
+{
+	int ret = -1;
+
+	for (;;) {
+		sqlite3_stmt *stmt;
+		const char *sql;
+
+		sql = "SELECT content FROM blobs WHERE file = ?";
+		if (sqlite3_prepare(db, sql, -1, &stmt, 0)) {
+			__sqlite3_perror("sqlite3_prepare", db);
+			goto exit;
+		}
+
+		if (sqlite3_bind_text(stmt, 1, file, -1, SQLITE_STATIC)) {
+			__sqlite3_perror("sqlite3_bind_text", db);
+			goto exit;
+		}
+
+		if (sqlite3_step(stmt) != SQLITE_ROW) {
+			__sqlite3_perror("sqlite3_step", db);
+			goto exit;
+		}
+
+		write(STDOUT_FILENO, sqlite3_column_blob(stmt, 0),
+		      sqlite3_column_bytes(stmt, 0));
+
+		if (sqlite3_finalize(stmt) == SQLITE_SCHEMA) {
+			__sqlite3_perror("sqlite3_step", db);
+			continue;
+		}
+
+		break;
+	}
+
+	ret = 0;
+
+exit:
+	return ret;
+}
+
+int archive(sqlite3 *db, const char *file) {
+	int fd = -1, ret = -1;
+
+	for (;;) {
+		unsigned char blob[BUFSIZ];
+		sqlite3_stmt *stmt;
+		const char *sql;
+		ssize_t size;
+
+		fd = open(file, O_RDONLY);
+		if (fd == -1) {
+			perror("open");
+			goto exit;
+		}
+
+		size = read(fd, blob, sizeof(blob));
+		if (size == -1) {
+			perror("read");
+			goto exit;
+		}
+
+		sql = "INSERT OR REPLACE INTO blobs(file, content) VALUES(?, ?)";
+		if (sqlite3_prepare(db, sql, -1, &stmt, 0) != SQLITE_OK) {
+			__sqlite3_perror("sqlite3_prepare", db);
+			goto exit;
+		}
+
+		if (sqlite3_bind_text(stmt, 1, file, -1, SQLITE_STATIC)) {
+			__sqlite3_perror("sqlite3_bind_text", db);
+			goto exit;
+		}
+
+		if (sqlite3_bind_blob(stmt, 2, blob, size, SQLITE_STATIC)) {
+			__sqlite3_perror("sqlite3_bind_blob", db);
+			goto exit;
+		}
+
+		if (sqlite3_step(stmt) != SQLITE_DONE) {
+			__sqlite3_perror("sqlite3_step", db);
+			goto exit;
+		}
+
+		if (sqlite3_finalize(stmt) == SQLITE_SCHEMA) {
+			__sqlite3_perror("sqlite3_step", db);
+			continue;
+		}
+
+		break;
+	}
+
+	ret = 0;
+
+exit:
+	if (fd != -1) {
+		if (close(fd))
+			perror("close");
+		fd = -1;
+	}
+
+	return ret;
+}
+
 static inline const char *applet(const char *arg0)
 {
 	char *s = strrchr(arg0, '/');
@@ -117,7 +220,7 @@ int parse_arguments(struct options *opts, int argc, char * const argv[])
 
 int main(int argc, char * const argv[])
 {
-	int exist, fd = -1, ret = EXIT_FAILURE;
+	int exist, ret = EXIT_FAILURE;
 	static struct options options = {
 		.file = "database.sql",
 	};
@@ -155,101 +258,12 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	if (options.extract) {
-		for (;;) {
-			sqlite3_stmt *stmt;
-			const char *sql;
-
-			sql = "SELECT content FROM blobs WHERE file = ?";
-			if (sqlite3_prepare(db, sql, -1, &stmt, 0)) {
-				__sqlite3_perror("sqlite3_prepare", db);
-				goto exit;
-			}
-
-			if (sqlite3_bind_text(stmt, 1, argv[optind], -1,
-					      SQLITE_STATIC)) {
-				__sqlite3_perror("sqlite3_bind_text", db);
-				goto exit;
-			}
-
-			if (sqlite3_step(stmt) != SQLITE_ROW) {
-				__sqlite3_perror("sqlite3_step", db);
-				goto exit;
-			}
-
-			write(STDOUT_FILENO,
-			      sqlite3_column_blob(stmt, 0),
-			      sqlite3_column_bytes(stmt, 0));
-
-			if (sqlite3_finalize(stmt) == SQLITE_SCHEMA) {
-				__sqlite3_perror("sqlite3_step", db);
-				continue;
-			}
-
-			break;
-		}
-
-		ret = EXIT_SUCCESS;
-		goto exit;
-	}
-
-	for (;;) {
-		unsigned char blob[BUFSIZ];
-		sqlite3_stmt *stmt;
-		const char *sql;
-		ssize_t size;
-
-		fd = open(argv[optind], O_RDONLY);
-		if (fd == -1) {
-			perror("open");
-			goto exit;
-		}
-
-		size = read(fd, blob, sizeof(blob));
-		if (size == -1) {
-			perror("read");
-			goto exit;
-		}
-
-		sql = "INSERT OR REPLACE INTO blobs(file, content) VALUES(?, ?)";
-		if (sqlite3_prepare(db, sql, -1, &stmt, 0) != SQLITE_OK) {
-			__sqlite3_perror("sqlite3_prepare", db);
-			goto exit;
-		}
-
-		if (sqlite3_bind_text(stmt, 1, argv[optind], -1,
-				      SQLITE_STATIC)) {
-			__sqlite3_perror("sqlite3_bind_text", db);
-			goto exit;
-		}
-
-		if (sqlite3_bind_blob(stmt, 2, blob, size, SQLITE_STATIC)) {
-			__sqlite3_perror("sqlite3_bind_blob", db);
-			goto exit;
-		}
-
-		if (sqlite3_step(stmt) != SQLITE_DONE) {
-			__sqlite3_perror("sqlite3_step", db);
-			goto exit;
-		}
-
-		if (sqlite3_finalize(stmt) == SQLITE_SCHEMA) {
-			__sqlite3_perror("sqlite3_step", db);
-			continue;
-		}
-
-		break;
-	}
-
-	ret = EXIT_SUCCESS;
+	if (options.extract)
+		ret = extract(db, argv[optind]);
+	else
+		ret = archive(db, argv[optind]);
 
 exit:
-	if (fd != -1) {
-		if (close(fd))
-			perror("close");
-		fd = -1;
-	}
-
 	sqlite3_close(db);
 	return ret;
 }
