@@ -6,7 +6,7 @@
 
 ## SYNOPSIS
 
-**sqlitear** [OPTIONS] FILE
+**sqlitear** [OPTIONS] [FILE]
 
 ## DESCRIPTION
 
@@ -20,6 +20,9 @@ restore individual files from the database.
 
 **-x or --extract**
 	Extract file from a database.
+
+**-t or --list**
+	List the contents of a database.
 
 **-h or --help**
 	Display this message.

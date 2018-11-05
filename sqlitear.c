@@ -41,7 +41,48 @@ struct options {
 	char * const *argv;
 	const char *file;
 	int extract;
+	int list;
 };
+
+int list(sqlite3 *db) {
+	int ret = -1;
+
+	for (;;) {
+		sqlite3_stmt *stmt;
+		const char *sql;
+
+		sql = "SELECT file FROM blobs";
+		if (sqlite3_prepare(db, sql, -1, &stmt, 0)) {
+			__sqlite3_perror("sqlite3_prepare", db);
+			goto exit;
+		}
+
+		for (;;) {
+			int rc = sqlite3_step(stmt);
+			if (rc == SQLITE_DONE) {
+				break;
+			} else if (rc == SQLITE_ROW) {
+				printf("%s\n", sqlite3_column_text(stmt, 0));
+				continue;
+			}
+
+			__sqlite3_perror("sqlite3_step", db);
+			goto exit;
+		}
+
+		if (sqlite3_finalize(stmt) == SQLITE_SCHEMA) {
+			__sqlite3_perror("sqlite3_step", db);
+			continue;
+		}
+
+		break;
+	}
+
+	ret = 0;
+
+exit:
+	return ret;
+}
 
 int extract(sqlite3 *db, const char *file)
 {
@@ -157,7 +198,7 @@ static inline const char *applet(const char *arg0)
 
 void usage(FILE * f, char * const arg0)
 {
-	fprintf(f, "Usage: %s [OPTIONS] FILE\n"
+	fprintf(f, "Usage: %s [OPTIONS] [FILE]\n"
 		   "\n"
 		   "Saves many files together into a single database, and can "
 		   "restore individual files\nfrom the database.\n"
@@ -165,6 +206,7 @@ void usage(FILE * f, char * const arg0)
 		   "Options:\n"
 		   " -f or --file FILE     Set the path to database.\n"
 		   " -x or --extract       Extract file from a database.\n"
+		   " -t or --list          List the contents of a database.\n"
 		   " -h or --help          Display this message.\n"
 		   " -V or --version       Display the version.\n"
 		   "", applet(arg0));
@@ -175,6 +217,7 @@ int parse_arguments(struct options *opts, int argc, char * const argv[])
 	static const struct option long_options[] = {
 		{ "file",    required_argument, NULL, 'f' },
 		{ "extract", no_argument,       NULL, 'x' },
+		{ "list",    no_argument,       NULL, 't' },
 		{ "version", no_argument,       NULL, 'V' },
 		{ "help",    no_argument,       NULL, 'h' },
 		{ NULL,      no_argument,       NULL, 0   }
@@ -183,7 +226,7 @@ int parse_arguments(struct options *opts, int argc, char * const argv[])
 	opterr = 0;
 	for (;;) {
 		int index;
-		int c = getopt_long(argc, argv, "f:xVh", long_options, &index);
+		int c = getopt_long(argc, argv, "f:xtVh", long_options, &index);
 		if (c == -1) {
 			break;
 		}
@@ -195,6 +238,10 @@ int parse_arguments(struct options *opts, int argc, char * const argv[])
 
 		case 'x':
 			opts->extract = 1;
+			break;
+
+		case 't':
+			opts->list = 1;
 			break;
 
 		case 'V':
@@ -231,11 +278,11 @@ int main(int argc, char * const argv[])
 	if (argi < 0) {
 		fprintf(stderr, "Error: %s: Invalid option!\n", argv[optind-1]);
 		exit(EXIT_FAILURE);
-	} else if (argc - argi < 1) {
+	} else if (!options.list && (argc - argi < 1)) {
 		usage(stdout, argv[0]);
 		fprintf(stderr, "Error: Too few arguments!\n");
 		exit(EXIT_FAILURE);
-	} else if (argc - argi > 1) {
+	} else if (!options.list && (argc - argi > 1)) {
 		usage(stdout, argv[0]);
 		fprintf(stderr, "Error: Too many arguments!\n");
 		exit(EXIT_FAILURE);
@@ -260,6 +307,8 @@ int main(int argc, char * const argv[])
 
 	if (options.extract)
 		ret = extract(db, argv[optind]);
+	else if (options.list)
+		ret = list(db);
 	else
 		ret = archive(db, argv[optind]);
 
