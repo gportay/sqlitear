@@ -1,47 +1,53 @@
-# sqlitear(1)
+= sqlitear(1)
+:doctype: manpage
+:author: Gaël PORTAY
+:email: gael.portay@gmail.com
+:lang: en
+:man manual: SQLite Archive Manual
+:man source: sqlitear
 
-## NAME
+== NAME
 
-**sqlitear** - example of how to insert/replace or select a blob in sqlite
+sqlitear - example of how to insert/replace or select a blob in sqlite
 
-## SYNOPSIS
+== SYNOPSIS
 
-**sqlitear** [OPTIONS] -c|-x|-t -f DATABASE [FILE...]
+*sqlitear* [OPTIONS] -c|-x|-t -f DATABASE [FILE...]
 
-## DESCRIPTION
+== DESCRIPTION
 
-**sqlitear(1)** saves many files together into a single database, and can
+*sqlitear(1)* saves many files together into a single database, and can
 restore individual files from the database.
 
-## OPTIONS
+== OPTIONS
 
-**-f or --file**
+**-f or --file**::
 	Set the path to database.
 
-**-c or --create**
+**-c or --create**::
 	Create a new database.
 
-**-x or --extract**
+**-x or --extract**::
 	Extract file from a database.
 
-**-t or --list**
+**-t or --list**::
 	List the contents of a database.
 
-**-h or --help**
+**-h or --help**::
 	Display this message.
 
-**-V or --version**
+**-V or --version**::
 	Display the version.
 
-## EXIT STATUS
+== EXIT STATUS
 
 Exits success if timer is reached; exits failure otherwise.
 
-## AUTHOR
+== AUTHOR
 
 Written by Gaël PORTAY *gael.portay@gmail.com*
 
-## COPYRIGHT
+== COPYRIGHT
 
 Copyright (C) 2018 Gaël PORTAY.
 

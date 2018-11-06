@@ -22,7 +22,16 @@ override LDLIBS += $(shell pkg-config sqlite3 --libs)
 all: override CFLAGS += -g -Wall -Wextra -Werror
 all: sqlitear
 
+.PHONY: doc
+doc: sqlitear.1.gz
+
 .PHONY: clean
 clean:
 	rm -f sqlitear database.sql
+
+%.1: %.1.adoc
+	asciidoctor -b manpage -o $@ $<
+
+%.gz: %
+	gzip -c $^ >$@
 
