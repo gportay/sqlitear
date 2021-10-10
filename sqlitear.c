@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Gaël PORTAY
+ * Copyright 2018,2021 Gaël PORTAY
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -197,6 +197,9 @@ int main(int argc, char * const argv[])
 		size = read(fd, blob, sizeof(blob));
 		if (size == -1) {
 			perror("read");
+			goto exit;
+		} else if ((size < 0) || ((size_t)size > sizeof(blob))) {
+			fprintf(stderr, "read: %s\n", "Impossible happened");
 			goto exit;
 		}
 
