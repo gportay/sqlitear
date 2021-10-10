@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018 Gaël PORTAY
+ * Copyright 2018 Gaël PORTAY
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
